@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% import "bootstrap_wtf.html" as wtf %}
+{% block content %}
+    <!-- Example Questions Section -->
+    <div class="mt-5">
+        <h1>{{ _('Team Activity Monitor') }}</h1>
+        <!-- Pipeline Description -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <p class="lead">{{ _('Example Questions:') }}</p>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">{{ _('What is John working on these days?') }}</li>
+                            <li class="list-group-item">{{ _('Show me recent activity for Sarah') }}</li>
+                            <li class="list-group-item">{{ _('What has Mike been working on this week?') }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">{{ _('Ask About Team Activity') }}</div>
+                    <div class="card-body">
+                        {% if error %}
+                        <div class="alert alert-danger mb-3" role="alert">{{ error }}</div>
+                        {% endif %}
+                        
+                        <!-- Chat Messages Area -->
+                        <div class="flex-grow-1 overflow-auto mb-4" style="max-height: 60vh;">
+                            {% for message in messages %}
+                            <div class="d-flex {{ 'justify-content-end' if message.is_user else 'justify-content-start' }} mb-3">
+                                <div class="card shadow-sm border-0" style="max-width: 75%;">
+                                    <div class="card-body">
+                                        <div class="mb-2">
+                                            <h6 class="text-primary mb-1">
+                                                {{ 'You' if message.is_user else 'Team-Monitor' }}:
+                                            </h6>
+                                            <p class="mb-0 ps-3">
+                                                {{ message.q if message.is_user else message.a }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Input Form -->
+                        <div class="d-flex gap-2">
+                            <form method="POST" action="/" class="flex-grow-1">
+                                <div class="input-group">
+                                    <input type="text" name="message" class="form-control form-control-lg" 
+                                           placeholder="Write your message here..." required/>
+                                    <button type="submit" class="btn btn-primary btn-lg">Send</button>
+                                </div>
+                            </form>
+                            <form method="POST" action="/reset">
+                                <button type="submit" class="btn btn-outline-secondary btn-lg">New</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -5,9 +5,9 @@ from flask import Flask, request, current_app
 
 from src.config import Config
 
-from src.app.cli import init_frontend_logger
+# from src.app.cli import init_frontend_logger
 
-app_logger = init_frontend_logger(logging.INFO)
+# app_logger = init_frontend_logger(logging.INFO)
 
 
 def get_locale():
@@ -20,16 +20,17 @@ def create_app(config_class=Config):
     from src.app.errors import bp as errors_bp
 
     app.register_blueprint(errors_bp)
-    from src.app.auth import bp as auth_bp
+    # from src.app.auth import bp as auth_bp
 
-    app.register_blueprint(auth_bp, url_prefix="/auth")
+    # app.register_blueprint(auth_bp, url_prefix="/auth")
     from src.app.main import bp as main_bp
 
     app.register_blueprint(main_bp)
-    from src.app.cli import bp as cli_bp
 
-    app.register_blueprint(cli_bp)
+    # from src.app.cli import bp as cli_bp
 
+    # app.register_blueprint(cli_bp)
+    """
     if not app.debug and not app.testing:
         if app.config["MAIL_SERVER"]:
             auth = None
@@ -48,7 +49,8 @@ def create_app(config_class=Config):
             )
             mail_handler.setLevel(logging.ERROR)
             app.logger.addHandler(mail_handler)
+    """
     return app
 
 
-from src.app.models import researcher, gene, pipeline_run_service, pipeline_run
+# from src.app.models import researcher, gene, pipeline_run_service, pipeline_run
