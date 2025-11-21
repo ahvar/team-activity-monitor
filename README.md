@@ -40,7 +40,6 @@ A lightweight Flask web application that answers natural language questions like
 - Python 3.10+
 - Jira account with API access
 - GitHub account with Personal Access Token
-- OpenAI API key (optional - uses template responses by default)
 
 ### Quick Start
 
@@ -67,7 +66,7 @@ GITHUB_API_KEY=ghp_your_github_token_here
 JIRA_API_KEY=your_jira_api_token_here
 JIRA_BASE_URL=https://yourcompany.atlassian.net
 JIRA_EMAIL=your-email@company.com
-TEAM_MEMBERS=Arthur,Alice,Bob,Charlie
+TEAM_MEMBERS=Sarah,Mike,Lisa,John
 
 # Optional
 OPENAI_API_KEY=sk-your-openai-key-here
@@ -132,15 +131,18 @@ JIRA_BASE_URL=https://yourcompany.atlassian.net
 ### Team Member Mapping
 Configure team members in `.env`:
 ```bash
-TEAM_MEMBERS=Sarah,John,Mike,Lisa
+TEAM_MEMBERS=John,Sarah,Mike,Lisa
 ```
 
 For members with different usernames across platforms, update the mapping in `src/app/main/async_activity_service.py`:
 ```python
 # Handle username differences
-if member.lower() == "arthur":
-    github_user = "ahvar"  # GitHub username
-    jira_user = "arthurvargasdev@gmail.com"  # Jira email
+if member.lower() == "john":
+    github_user = "john_github"  # GitHub username
+    jira_user = "john@company.com"  # Jira email
+elif member.lower() == "sarah":
+    github_user = "sarah_dev"  # GitHub username  
+    jira_user = "sarah@company.com"  # Jira email
 else:
     github_user = member
     jira_user = member
