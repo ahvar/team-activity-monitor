@@ -1,9 +1,11 @@
 # app/query_parser.py
-import re
 from __future__ import annotations
+import re
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Literal
+
+from src.utils.references import TEAM_MEMBERS
 
 
 class Intent(Enum):
@@ -25,19 +27,19 @@ class ParsedQuery:
 
 def extract_member_name(question: str) -> str | None:
     """
-    Very naive first pass: assume the first capitalized word
-    that's not at the beginning of the sentence is the name.
-    In practice you might map against a known list of team members.
+    Match the question against the known TEAM_MEMBERS list.
+
+    This avoids brittle capitalization heuristics and ensures we only
+    respond for explicitly supported users. Falls back to None if no
+    known name is present so the caller can surface a friendly error.
     """
-    tokens = question.split()
-    for i, token in enumerate(tokens):
-        # skip first word in case it's "What", "Show", etc.
-        if i == 0:
-            continue
-        # strip punctuation like "Mike?"
-        word = re.sub(r"[^\w]", "", token)
-        if word and word[0].isupper():
-            return word
+    lower_question = question.lower()
+
+    for member in TEAM_MEMBERS:
+        pattern = rf"\b{re.escape(member.lower())}\b"
+        if re.search(pattern, lower_question):
+            return member
+
     return None
 
 
