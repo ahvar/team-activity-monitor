@@ -12,6 +12,7 @@ class Config:
     GITHUB_API_KEY = os.environ.get("GITHUB_API_KEY")
     JIRA_API_KEY = os.environ.get("JIRA_API_KEY")
     JIRA_BASE_URL = os.environ.get("JIRA_BASE_URL")
+    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
     ADMINS = ["arthurvargasdev@gmail.com"]
     ITEMS_PER_PAGE = 10
     LANGUAGES = ["en", "es"]

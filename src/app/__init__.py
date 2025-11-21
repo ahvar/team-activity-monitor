@@ -1,6 +1,5 @@
 import os
 import logging
-from logging.handlers import SMTPHandler
 from flask import Flask, request, current_app
 
 from src.config import Config
