@@ -13,3 +13,12 @@ MONITOR_LOG_BACKEND = f"{__Application__}_{__version__}_frontend"
 
 summary_styles = ["json", "txt"]
 openai_models = ["gpt-3.5-turbo"]
+
+# Canonical list of supported team members for query parsing.
+# Keep names in their preferred display form (capitalization, spacing).
+TEAM_MEMBERS = [
+    "John",
+    "Sarah",
+    "Mike",
+    "Lisa",
+]
