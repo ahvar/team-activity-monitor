@@ -10,8 +10,18 @@ load_dotenv(str(envfile))
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY") or "you-will-never-guess"
     GITHUB_API_KEY = os.environ.get("GITHUB_API_KEY")
+    GITHUB_BASE_URL = os.environ.get("GITHUB_BASE_URL")
     JIRA_API_KEY = os.environ.get("JIRA_API_KEY")
     JIRA_BASE_URL = os.environ.get("JIRA_BASE_URL")
+    JIRA_EMAIL = os.environ.get("JIRA_EMAIL")
+    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
     ADMINS = ["arthurvargasdev@gmail.com"]
     ITEMS_PER_PAGE = 10
     LANGUAGES = ["en", "es"]
+
+    # Parse team members from environment variable
+    TEAM_MEMBERS = [
+        name.strip()
+        for name in os.environ.get("TEAM_MEMBERS", "John,Sarah,Mike,Lisa").split(",")
+        if name.strip()
+    ]

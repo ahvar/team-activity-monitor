@@ -1,0 +1,1 @@
+FLASK_APP=src.activity_monitor_flask_shell_ctx

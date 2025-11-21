@@ -3,27 +3,29 @@
 {% block content %}
     <!-- Example Questions Section -->
     <div class="mt-5">
-        <h1>{{ _('Team Activity Monitor') }}</h1>
+        <h1>Team Activity Monitor</h1>
         <!-- Pipeline Description -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
                     <div class="card-body">
-                        <p class="lead">{{ _('Example Questions:') }}</p>
+                        <p class="lead">Example Questions:</p>
                         <ul class="list-group list-group-flush">
-                            <li class="list-group-item">{{ _('What is John working on these days?') }}</li>
-                            <li class="list-group-item">{{ _('Show me recent activity for Sarah') }}</li>
-                            <li class="list-group-item">{{ _('What has Mike been working on this week?') }}</li>
+                            {% for member in config.TEAM_MEMBERS[:3] %}
+                            <li class="list-group-item">What is {{ member }} working on these days?</li>
+                            {% endfor %}
+                            <li class="list-group-item">Show me recent activity for the team</li>
                         </ul>
                     </div>
                 </div>
             </div>
         </div>
         
+        <!-- Rest of your template stays the same -->
         <div class="row">
             <div class="col-md-8">
                 <div class="card">
-                    <div class="card-header">{{ _('Ask About Team Activity') }}</div>
+                    <div class="card-header">Ask About Team Activity</div>
                     <div class="card-body">
                         {% if error %}
                         <div class="alert alert-danger mb-3" role="alert">{{ error }}</div>
