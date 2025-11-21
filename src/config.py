@@ -19,9 +19,11 @@ class Config:
     ITEMS_PER_PAGE = 10
     LANGUAGES = ["en", "es"]
 
-    # Parse team members from environment variable
     TEAM_MEMBERS = [
         name.strip()
-        for name in os.environ.get("TEAM_MEMBERS", "John,Sarah,Mike,Lisa").split(",")
+        for name in os.environ.get("TEAM_MEMBERS", "").split(",")
         if name.strip()
     ]
+
+    if not TEAM_MEMBERS:
+        raise ValueError("TEAM_MEMBERS environment variable is required")

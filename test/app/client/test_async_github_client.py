@@ -1,6 +1,7 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 import aiohttp
+from datetime import datetime, timedelta
 from src.app.client.async_github import AsyncGitHubClient
 
 
@@ -74,31 +75,72 @@ class TestAsyncGitHubClient:
             assert result[0]["title"] == "Add user dashboard feature"
 
     @pytest.mark.asyncio
-    async def test_time_range_filtering(self):
-        """Test different time range parameters"""
-        with patch.object(
-            self.client, "get_recent_commits", new_callable=AsyncMock
-        ) as mock_method:
-            # Arrange - return empty list for both calls
-            mock_method.return_value = []
+    async def test_time_range_filtering_actual_queries(self):
+        """Test that different time ranges generate correct GitHub queries"""
 
-            # Act - test both time ranges
+        # Mock the HTTP session instead of the method
+        mock_response = MagicMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(return_value={"items": []})
+        mock_response.raise_for_status = MagicMock()
+
+        mock_session = MagicMock()
+        mock_session.get.return_value.__aenter__.return_value = mock_response
+        mock_session.get.return_value.__aexit__.return_value = None
+
+        with patch("aiohttp.ClientSession") as mock_session_class:
+            mock_session_class.return_value.__aenter__.return_value = mock_session
+            mock_session_class.return_value.__aexit__.return_value = None
+
+            # Test "recent" time range (14 days)
             await self.client.get_recent_commits("John", "recent")
+
+            # Get the query that was sent
+            call_args = mock_session.get.call_args
+            params = call_args[1]["params"]  # keyword arguments
+            query = params["q"]
+
+            # Verify the query includes date filter for 14 days ago
+            expected_date = (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d")
+            assert f"committer-date:>={expected_date}" in query
+            assert "author:John" in query
+
+            # Reset mock
+            mock_session.get.reset_mock()
+
+            # Test "this_week" time range (7 days)
             await self.client.get_recent_commits("John", "this_week")
 
-            # Assert - verify method was called twice with different parameters
-            assert mock_method.call_count == 2
-            calls = mock_method.call_args_list
+            # Get the query that was sent
+            call_args = mock_session.get.call_args
+            params = call_args[1]["params"]
+            query = params["q"]
 
-            # ✅ FIXED: Access positional arguments correctly
-            # calls[0] is a call object with .args (positional) and .kwargs (keyword)
-            # Your calls are: get_recent_commits("John", "recent") and get_recent_commits("John", "this_week")
-            # So args[0] = "John", args[1] = "recent"/"this_week"
-            first_call_args = calls[0].args
-            second_call_args = calls[1].args
+            # Verify the query includes date filter for 7 days ago
+            expected_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+            assert f"committer-date:>={expected_date}" in query
+            assert "author:John" in query
 
-            assert first_call_args[1] == "recent"  # Second positional argument
-            assert second_call_args[1] == "this_week"  # Second positional argument
+    def test_get_date_filter_method(self):
+        """Test the _get_date_filter helper method"""
+
+        # Test "this_week" - should return 7 days ago
+        result = self.client._get_date_filter("this_week")
+        expected = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+        assert result == expected
+
+        # Test "recent" - should return 14 days ago
+        result = self.client._get_date_filter("recent")
+        expected = (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d")
+        assert result == expected
+
+        # Test "all_time" - should return None
+        result = self.client._get_date_filter("all_time")
+        assert result is None
+
+        # Test unknown value - should return None
+        result = self.client._get_date_filter("unknown")
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_api_error_handling(self):

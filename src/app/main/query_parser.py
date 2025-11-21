@@ -27,48 +27,155 @@ class ParsedQuery:
 
 def extract_member_name(question: str) -> str | None:
     """
-    Match the question against the known TEAM_MEMBERS list.
-
-    This avoids brittle capitalization heuristics and ensures we only
-    respond for explicitly supported users. Falls back to None if no
-    known name is present so the caller can surface a friendly error.
+    Enhanced member name extraction with flexible matching.
     """
     lower_question = question.lower()
 
+    # Remove common prefixes/suffixes that might interfere
+    clean_question = re.sub(
+        r"\b(what|show|tell|me|about|is|has|have|the)\b", " ", lower_question
+    )
+    clean_question = re.sub(r"\s+", " ", clean_question).strip()
+
     for member in TEAM_MEMBERS:
-        pattern = rf"\b{re.escape(member.lower())}\b"
-        if re.search(pattern, lower_question):
-            return member
+        member_lower = member.lower()
+
+        # More specific patterns to avoid false matches
+        patterns = [
+            # Exact word boundary match
+            rf"\b{re.escape(member_lower)}\b",
+            # Possessive form: "John's"
+            rf"\b{re.escape(member_lower)}'?s\b",
+            # Followed by verbs (but not when used as project/thing name)
+            rf"\b{re.escape(member_lower)}\s+(is|has|been|working)",
+        ]
+
+        for pattern in patterns:
+            if re.search(pattern, clean_question):
+                # ADDITIONAL CHECK: Avoid matching when used as project/object name
+                # Check if preceded by "the", "a", "an" or followed by "project", "team", etc.
+                context_pattern = rf"(the|a|an)\s+{re.escape(member_lower)}|{re.escape(member_lower)}\s+(project|team|repository|repo|branch|file|folder|directory)"
+                if re.search(context_pattern, lower_question):
+                    continue  # Skip this match, it's likely a project name
+                return member
 
     return None
 
 
 def infer_time_range(question: str) -> TimeRange:
+    """Enhanced time range detection with more patterns."""
     q = question.lower()
-    if "this week" in q or "week" in q:
-        return "this_week"
-    if "recent" in q or "these days" in q or "lately" in q:
-        return "recent"
+
+    # This week patterns
+    week_patterns = [
+        "this week",
+        "current week",
+        "week",
+        "past week",
+        "last 7 days",
+        "past 7 days",
+        "weekly",
+    ]
+
+    # Recent patterns
+    recent_patterns = [
+        "recent",
+        "recently",
+        "these days",
+        "lately",
+        "current",
+        "last few days",
+        "past few days",
+        "now",
+        "currently",
+    ]
+
+    for pattern in week_patterns:
+        if pattern in q:
+            return "this_week"
+
+    for pattern in recent_patterns:
+        if pattern in q:
+            return "recent"
+
     return "recent"
 
 
 def infer_intent(question: str) -> Intent:
+    """Enhanced intent detection with more flexible patterns."""
     q = question.lower()
 
-    if "commit" in q or "committed" in q:
-        return Intent.GITHUB_COMMITS
+    # GitHub Commits patterns (most specific first)
+    commit_patterns = [
+        "commit",
+        "committed",
+        "commits",
+        "pushed",
+        "push",
+        "code changes",
+        "recent changes",
+        "coding",
+    ]
 
-    if "pull request" in q or "pull requests" in q or "prs" in q:
-        return Intent.GITHUB_PULL_REQUESTS
+    # GitHub Pull Requests patterns
+    pr_patterns = [
+        "pull request",
+        "pull requests",
+        "prs",
+        "pr ",
+        "merge request",
+        "merge requests",
+        "reviews",
+    ]
 
-    if "issue" in q or "ticket" in q:
-        return Intent.JIRA_ISSUES
+    # More specific Jira patterns (remove generic "working on")
+    jira_patterns = [
+        "issue",
+        "issues",
+        "ticket",
+        "tickets",
+        "task",
+        "tasks",
+        "jira",
+        "assigned",
+        "current work",
+    ]
 
-    # default to full activity summary
+    summary_patterns = [
+        "working on",
+        "been doing",
+        "activity",
+        "up to",
+        "busy with",
+        "focused on",
+        "progress",
+    ]
+
+    # Check in priority order (most specific first)
+    for pattern in commit_patterns:
+        if pattern in q:
+            return Intent.GITHUB_COMMITS
+
+    for pattern in pr_patterns:
+        if pattern in q:
+            return Intent.GITHUB_PULL_REQUESTS
+
+    for pattern in jira_patterns:
+        if pattern in q:
+            return Intent.JIRA_ISSUES
+
+    for pattern in summary_patterns:
+        if pattern in q:
+            return Intent.MEMBER_ACTIVITY_SUMMARY
+
     return Intent.MEMBER_ACTIVITY_SUMMARY
 
 
 def parse_query(question: str) -> ParsedQuery | None:
+    """Enhanced query parsing with better error handling."""
+    if not question or not question.strip():
+        return None
+
     member_name = extract_member_name(question)
     if not member_name:
         return None

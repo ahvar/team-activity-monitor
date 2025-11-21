@@ -15,7 +15,7 @@ class TestQueryParser(unittest.TestCase):
     def setUp(self):
         """Set up test data"""
         # Mock TEAM_MEMBERS for consistent testing
-        self.mock_team_members = ["John", "Sarah", "Mike", "Lisa", "David", "Emma"]
+        self.mock_team_members = ["Arthur", "Alice", "Bob", "Charlie", "John", "Sarah"]
 
     @patch("src.app.main.query_parser.TEAM_MEMBERS")
     def test_extract_member_name_valid_names(self, mock_team_members):
@@ -23,15 +23,17 @@ class TestQueryParser(unittest.TestCase):
         mock_team_members.__iter__.return_value = self.mock_team_members
 
         test_cases = [
-            ("What is John working on these days?", "John"),
-            ("Show me Sarah's recent activity", "Sarah"),
-            ("What has Mike been working on this week?", "Mike"),
-            ("lisa's pull requests", "Lisa"),  # Test case insensitive
-            ("Recent commits by DAVID", "David"),  # Test uppercase
+            ("What is Arthur working on these days?", "Arthur"),
+            ("Show me Alice's recent activity", "Alice"),
+            ("What has Bob been working on this week?", "Bob"),
+            ("charlie's pull requests", "Charlie"),  # Test case insensitive
+            ("Recent commits by JOHN", "John"),  # Test uppercase
             (
-                "emma committed something yesterday",
-                "Emma",
+                "sarah committed something yesterday",
+                "Sarah",
             ),  # Test lowercase in sentence
+            ("Arthur's recent work", "Arthur"),  # Possessive form
+            ("What is Arthur working on?", "Arthur"),  # Followed by verb
         ]
 
         for query, expected_name in test_cases:
@@ -45,11 +47,13 @@ class TestQueryParser(unittest.TestCase):
         mock_team_members.__iter__.return_value = self.mock_team_members
 
         test_cases = [
-            "What is Bob working on?",  # Unknown name
+            "What is Mike working on?",  # Unknown name (not in current team)
             "Show me the team activity",  # No specific name
             "What are the recent commits?",  # No name
             "How is the project going?",  # Generic question
             "",  # Empty string
+            "   ",  # Whitespace only
+            "What about the Arthur project?",  # Arthur as project name, not person
         ]
 
         for query in test_cases:
@@ -60,12 +64,31 @@ class TestQueryParser(unittest.TestCase):
     @patch("src.app.main.query_parser.TEAM_MEMBERS")
     def test_extract_member_name_partial_matches(self, mock_team_members):
         """Test that partial matches don't trigger false positives"""
-        mock_team_members.__iter__.return_value = ["John", "Johnson"]
+        mock_team_members.__iter__.return_value = ["Bob", "Bobby"]
 
         test_cases = [
-            ("What about Johnson's work?", "Johnson"),  # Should match Johnson, not John
-            ("John is working hard", "John"),  # Should match John specifically
-            ("The johnstone project", None),  # Should not match John
+            ("What about Bobby's work?", "Bobby"),  # Should match Bobby, not Bob
+            ("Bob is working hard", "Bob"),  # Should match Bob specifically
+            ("The bobcat project", None),  # Should not match Bob
+            ("robbie's contribution", None),  # Should not match Bob
+        ]
+
+        for query, expected in test_cases:
+            with self.subTest(query=query):
+                result = extract_member_name(query)
+                self.assertEqual(result, expected)
+
+    @patch("src.app.main.query_parser.TEAM_MEMBERS")
+    def test_extract_member_name_enhanced_patterns(self, mock_team_members):
+        """Test the enhanced matching patterns"""
+        mock_team_members.__iter__.return_value = ["Arthur"]
+
+        test_cases = [
+            ("Arthur's commits", "Arthur"),  # Possessive form
+            ("Arthur is working on", "Arthur"),  # Followed by "is working"
+            ("Arthur has been coding", "Arthur"),  # Followed by "has been"
+            ("Show Arthur working", "Arthur"),  # Followed by "working"
+            ("What is Arthur working on?", "Arthur"),  # Complex sentence
         ]
 
         for query, expected in test_cases:
@@ -76,10 +99,14 @@ class TestQueryParser(unittest.TestCase):
     def test_infer_time_range_this_week(self):
         """Test time range detection for 'this week'"""
         test_cases = [
-            "What has John committed this week?",
-            "Show me Sarah's work from this week",
-            "Mike's activity for the week",
-            "What did Lisa do this week?",
+            "What has Arthur committed this week?",
+            "Show me Alice's work from this week",
+            "Bob's activity for the week",
+            "What did Charlie do this week?",
+            "Current week activity for Arthur",
+            "Past week commits by Alice",
+            "Last 7 days of work by Bob",
+            "Weekly summary for Charlie",
         ]
 
         for query in test_cases:
@@ -90,11 +117,14 @@ class TestQueryParser(unittest.TestCase):
     def test_infer_time_range_recent(self):
         """Test time range detection for 'recent'"""
         test_cases = [
-            "What is John working on these days?",
-            "Show me Sarah's recent activity",
-            "What has Mike been doing lately?",
-            "Lisa's recent commits",
-            "David's activity recently",
+            "What is Arthur working on these days?",
+            "Show me Alice's recent activity",
+            "What has Bob been doing lately?",
+            "Charlie's recent commits",
+            "Arthur's activity recently",
+            "Current work by Alice",
+            "Last few days of commits by Bob",
+            "What is Charlie currently working on?",
         ]
 
         for query in test_cases:
@@ -105,10 +135,10 @@ class TestQueryParser(unittest.TestCase):
     def test_infer_time_range_default(self):
         """Test default time range when no specific time mentioned"""
         test_cases = [
-            "What is John working on?",
-            "Show me Sarah's activity",
-            "Mike's current tasks",
-            "Lisa's assignments",
+            "What is Arthur working on?",
+            "Show me Alice's activity",
+            "Bob's current tasks",
+            "Charlie's assignments",
         ]
 
         for query in test_cases:
@@ -119,11 +149,14 @@ class TestQueryParser(unittest.TestCase):
     def test_infer_intent_github_commits(self):
         """Test intent detection for GitHub commits"""
         test_cases = [
-            "What has John committed this week?",
-            "Show me Sarah's recent commits",
-            "Mike's commits from yesterday",
-            "What did Lisa commit?",
-            "David committed what recently?",
+            "What has Arthur committed this week?",
+            "Show me Alice's recent commits",
+            "Bob's commits from yesterday",
+            "What did Charlie commit?",
+            "Arthur committed what recently?",
+            "Alice's recent code changes",
+            "What has Bob pushed lately?",
+            "Charlie's coding activity",
         ]
 
         for query in test_cases:
@@ -134,11 +167,13 @@ class TestQueryParser(unittest.TestCase):
     def test_infer_intent_github_pull_requests(self):
         """Test intent detection for GitHub pull requests"""
         test_cases = [
-            "Show me John's pull requests",
-            "What pull requests has Sarah created?",
-            "Mike's recent PRs",
-            "Lisa's pull request activity",
-            "David's open pull requests",
+            "Show me Arthur's pull requests",
+            "What pull requests has Alice created?",
+            "Bob's recent PRs",
+            "Charlie's pull request activity",
+            "Arthur's open pull requests",
+            "Alice's merge requests",
+            "Bob's recent reviews",
         ]
 
         for query in test_cases:
@@ -149,11 +184,15 @@ class TestQueryParser(unittest.TestCase):
     def test_infer_intent_jira_issues(self):
         """Test intent detection for JIRA issues"""
         test_cases = [
-            "What issues is John working on?",
-            "Show me Sarah's JIRA tickets",
-            "Mike's current issues",
-            "Lisa's assigned tickets",
-            "What tickets does David have?",
+            "What issues is Arthur working on?",
+            "Show me Alice's JIRA tickets",
+            "Bob's current issues",
+            "Charlie's assigned tickets",
+            "What tickets does Arthur have?",
+            "Alice's current tasks",
+            "Bob's assigned work",
+            "Charlie's Jira issues",
+            "Charlie's current work",
         ]
 
         for query in test_cases:
@@ -164,18 +203,37 @@ class TestQueryParser(unittest.TestCase):
     def test_infer_intent_member_activity_summary(self):
         """Test intent detection for general activity summary"""
         test_cases = [
-            "What is John working on these days?",
-            "Show me Sarah's recent activity",
-            "What has Mike been doing?",
-            "Lisa's current work",
-            "David's recent activity",
-            "How is Emma doing?",
+            "What is Arthur working on these days?",
+            "Show me Alice's recent activity",
+            "What has Bob been doing?",
+            "Arthur's recent activity",
+            "How is Alice doing?",
+            "What's Bob up to?",
+            "Charlie's recent progress",
+            "Alice's focus areas",
+            "Bob's general activity",
         ]
 
         for query in test_cases:
             with self.subTest(query=query):
                 result = infer_intent(query)
                 self.assertEqual(result, Intent.MEMBER_ACTIVITY_SUMMARY)
+
+    def test_infer_intent_priority_order(self):
+        """Test that intent detection follows priority order correctly"""
+        test_cases = [
+            # Commits should take priority over general "working on"
+            ("Arthur committed on this issue", Intent.GITHUB_COMMITS),
+            # PR patterns should take priority over issue patterns
+            ("Alice's pull request issues", Intent.GITHUB_PULL_REQUESTS),
+            # Specific patterns should take priority over general ones
+            ("Bob's ticket commits", Intent.GITHUB_COMMITS),
+        ]
+
+        for query, expected_intent in test_cases:
+            with self.subTest(query=query):
+                result = infer_intent(query)
+                self.assertEqual(result, expected_intent)
 
     @patch("src.app.main.query_parser.TEAM_MEMBERS")
     def test_parse_query_complete_parsing(self, mock_team_members):
@@ -184,33 +242,41 @@ class TestQueryParser(unittest.TestCase):
 
         test_cases = [
             {
-                "query": "What is John working on these days?",
+                "query": "What is Arthur working on these days?",
                 "expected": ParsedQuery(
-                    member_name="John",
+                    member_name="Arthur",
                     intent=Intent.MEMBER_ACTIVITY_SUMMARY,
                     time_range="recent",
                 ),
             },
             {
-                "query": "Show me Sarah's commits this week",
+                "query": "Show me Alice's commits this week",
                 "expected": ParsedQuery(
-                    member_name="Sarah",
+                    member_name="Alice",
                     intent=Intent.GITHUB_COMMITS,
                     time_range="this_week",
                 ),
             },
             {
-                "query": "Mike's JIRA issues lately",
+                "query": "Bob's JIRA issues lately",
                 "expected": ParsedQuery(
-                    member_name="Mike", intent=Intent.JIRA_ISSUES, time_range="recent"
+                    member_name="Bob", intent=Intent.JIRA_ISSUES, time_range="recent"
                 ),
             },
             {
-                "query": "Lisa's pull requests this week",
+                "query": "Charlie's pull requests this week",
                 "expected": ParsedQuery(
-                    member_name="Lisa",
+                    member_name="Charlie",
                     intent=Intent.GITHUB_PULL_REQUESTS,
                     time_range="this_week",
+                ),
+            },
+            {
+                "query": "What has Arthur committed recently?",
+                "expected": ParsedQuery(
+                    member_name="Arthur",
+                    intent=Intent.GITHUB_COMMITS,
+                    time_range="recent",
                 ),
             },
         ]
@@ -231,10 +297,12 @@ class TestQueryParser(unittest.TestCase):
         mock_team_members.__iter__.return_value = self.mock_team_members
 
         test_cases = [
-            "What is Bob working on?",  # Unknown member
+            "What is Mike working on?",  # Unknown member (Mike not in team)
             "Show me the team activity",  # No specific member
             "How is the project going?",  # Generic question
             "",  # Empty string
+            "   ",  # Whitespace only
+            "What are the commits?",  # No member mentioned
         ]
 
         for query in test_cases:
@@ -247,13 +315,18 @@ class TestQueryParser(unittest.TestCase):
         with patch("src.app.main.query_parser.TEAM_MEMBERS", self.mock_team_members):
             test_cases = [
                 {
-                    "query": "Did John commit any tickets this week?",
+                    "query": "Did Arthur commit any tickets this week?",
                     "expected_intent": Intent.GITHUB_COMMITS,  # "commit" should take precedence
                     "expected_time": "this_week",
                 },
                 {
-                    "query": "Show me Sarah's pull request issues",
-                    "expected_intent": Intent.GITHUB_PULL_REQUESTS,  # First match wins
+                    "query": "Show me Alice's pull request issues",
+                    "expected_intent": Intent.GITHUB_PULL_REQUESTS,  # PR should take precedence
+                    "expected_time": "recent",
+                },
+                {
+                    "query": "Bob's ticket and commit activity",
+                    "expected_intent": Intent.GITHUB_COMMITS,  # "commit" comes first in priority
                     "expected_time": "recent",
                 },
             ]
@@ -267,35 +340,41 @@ class TestQueryParser(unittest.TestCase):
 
     def test_case_insensitive_parsing(self):
         """Test that parsing works regardless of case"""
-        with patch("src.app.main.query_parser.TEAM_MEMBERS", ["John", "Sarah"]):
+        with patch("src.app.main.query_parser.TEAM_MEMBERS", ["Arthur", "Alice"]):
             test_cases = [
-                "what is JOHN working on?",
-                "SHOW ME sarah's COMMITS",
-                "John's PULL REQUESTS this WEEK",
-                "sarah committed SOMETHING recently",
+                "what is ARTHUR working on?",
+                "SHOW ME alice's COMMITS",
+                "Arthur's PULL REQUESTS this WEEK",
+                "alice committed SOMETHING recently",
+                "ARTHUR IS WORKING on tickets",
+                "alice's recent ACTIVITY",
             ]
 
             for query in test_cases:
                 with self.subTest(query=query):
                     result = parse_query(query)
                     self.assertIsNotNone(result, f"Failed to parse: {query}")
-                    self.assertIn(result.member_name, ["John", "Sarah"])
+                    self.assertIn(result.member_name, ["Arthur", "Alice"])
 
     def test_edge_cases(self):
         """Test edge cases and boundary conditions"""
-        with patch("src.app.main.query_parser.TEAM_MEMBERS", ["John"]):
+        with patch("src.app.main.query_parser.TEAM_MEMBERS", ["Arthur"]):
             test_cases = [
                 ("", None),  # Empty string
                 ("   ", None),  # Whitespace only
                 ("What?", None),  # No member name
                 (
-                    "John",
-                    ParsedQuery("John", Intent.MEMBER_ACTIVITY_SUMMARY, "recent"),
+                    "Arthur",
+                    ParsedQuery("Arthur", Intent.MEMBER_ACTIVITY_SUMMARY, "recent"),
                 ),  # Just name
                 (
-                    "JOHN JOHN JOHN",
-                    ParsedQuery("John", Intent.MEMBER_ACTIVITY_SUMMARY, "recent"),
+                    "ARTHUR ARTHUR ARTHUR",
+                    ParsedQuery("Arthur", Intent.MEMBER_ACTIVITY_SUMMARY, "recent"),
                 ),  # Repeated name
+                (
+                    "Arthur working",
+                    ParsedQuery("Arthur", Intent.MEMBER_ACTIVITY_SUMMARY, "recent"),
+                ),  # Simple phrase
             ]
 
             for query, expected in test_cases:
@@ -307,3 +386,50 @@ class TestQueryParser(unittest.TestCase):
                         self.assertEqual(result.member_name, expected.member_name)
                         self.assertEqual(result.intent, expected.intent)
                         self.assertEqual(result.time_range, expected.time_range)
+
+    def test_real_world_queries(self):
+        """Test queries that match your actual team configuration"""
+        with patch(
+            "src.app.main.query_parser.TEAM_MEMBERS",
+            ["Arthur", "Alice", "Bob", "Charlie"],
+        ):
+            test_cases = [
+                # These should work with your actual team
+                (
+                    "What is Arthur working on?",
+                    "Arthur",
+                    Intent.MEMBER_ACTIVITY_SUMMARY,
+                ),
+                ("Show me Arthur's current issues", "Arthur", Intent.JIRA_ISSUES),
+                (
+                    "What has Arthur committed this week?",
+                    "Arthur",
+                    Intent.GITHUB_COMMITS,
+                ),
+                (
+                    "Arthur's recent pull requests",
+                    "Arthur",
+                    Intent.GITHUB_PULL_REQUESTS,
+                ),
+                ("Alice's recent activity", "Alice", Intent.MEMBER_ACTIVITY_SUMMARY),
+                ("Bob's commits lately", "Bob", Intent.GITHUB_COMMITS),
+                ("Charlie's tickets", "Charlie", Intent.JIRA_ISSUES),
+            ]
+
+            for query, expected_member, expected_intent in test_cases:
+                with self.subTest(query=query):
+                    result = parse_query(query)
+                    self.assertIsNotNone(result, f"Failed to parse: {query}")
+                    self.assertEqual(result.member_name, expected_member)
+                    self.assertEqual(result.intent, expected_intent)
+
+    def test_enhanced_error_handling(self):
+        """Test the enhanced error handling"""
+        with patch("src.app.main.query_parser.TEAM_MEMBERS", []):
+            # Empty team members list
+            result = parse_query("What is Arthur working on?")
+            self.assertIsNone(result)
+
+        # Test with None input (should not crash)
+        result = parse_query(None)
+        self.assertIsNone(result)
