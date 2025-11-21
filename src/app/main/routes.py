@@ -6,7 +6,6 @@ import asyncio
 from pathlib import Path
 from datetime import datetime, timezone
 from flask import render_template, flash, redirect, url_for, request, g, current_app
-from flask_babel import _, get_locale
 from langdetect import detect, LangDetectException
 from src.app.main.forms import (
     EmptyForm,
@@ -83,7 +82,13 @@ def index():
 
         messages.append({"is_user": False, "a": response})
 
-    return render_template("index.html", title="Home", messages=messages, error=error)
+    return render_template(
+        "index.html",
+        title="Team Activity Monitor",
+        messages=messages,
+        error=error,
+        config=current_app.config,
+    )
 
 
 @bp.route("/reset", methods=["POST"])

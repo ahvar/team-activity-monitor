@@ -12,9 +12,9 @@ class AsyncGitHubClient:
     Async GitHub API client.
     """
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, base_url: Optional[str] = None):
         self.api_key = api_key
-        self.base_url = "https://api.github.com"  # TODO: should be env var in config
+        self.base_url = base_url or "https://api.github.com"
         self.headers = {
             "Authorization": f"Bearer {api_key}",
             "Accept": "application/vnd.github+json",

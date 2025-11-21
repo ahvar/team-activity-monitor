@@ -14,11 +14,12 @@ MONITOR_LOG_BACKEND = f"{__Application__}_{__version__}_frontend"
 summary_styles = ["json", "txt"]
 openai_models = ["gpt-3.5-turbo"]
 
-# Canonical list of supported team members for query parsing.
-# Keep names in their preferred display form (capitalization, spacing).
-TEAM_MEMBERS = [
-    "John",
-    "Sarah",
-    "Mike",
-    "Lisa",
-]
+# Team members are now loaded from configuration
+# This will be set by the app initialization
+TEAM_MEMBERS = []
+
+
+def set_team_members(members):
+    """Set team members from configuration"""
+    global TEAM_MEMBERS
+    TEAM_MEMBERS = members
