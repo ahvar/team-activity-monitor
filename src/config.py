@@ -15,7 +15,6 @@ class Config:
     JIRA_BASE_URL = os.environ.get("JIRA_BASE_URL")
     JIRA_EMAIL = os.environ.get("JIRA_EMAIL")
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-    ADMINS = ["arthurvargasdev@gmail.com"]
     ITEMS_PER_PAGE = 10
     LANGUAGES = ["en", "es"]
 

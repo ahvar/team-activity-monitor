@@ -167,20 +167,5 @@ def reset():
 
 def get_openai_response(message):
     """Handle OpenAI communication - for future enhancement"""
-    if not openai.api_key:
-        raise ValueError("API key is not set!")
-
-    try:
-        client = openai.OpenAI(api_key=openai.api_key)
-        response = client.chat.completions.create(
-            model=openai_models[0],
-            messages=[{"role": "user", "content": message}],
-            stream=False,
-        )
-        if not response or not response.choices:
-            raise ValueError("No response received from API")
-        return response.choices[0].message.content
-    except openai.AuthenticationError:
-        raise ValueError("Invalid API key")
-    except Exception as e:
-        raise ValueError(f"Error communicating with OpenAI: {str(e)}")
+    # This function exists but isn't used in current template-based approach
+    # TODO: Integrate OpenAI for dynamic response generation instead of templates
