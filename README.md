@@ -1,61 +1,319 @@
-# team-activity-monitor
+# Team Activity Monitor
 
-A lightweight Flask prototype that answers questions like “What is John working
-on these days?” by aggregating Jira and GitHub activity and letting an OpenAI
-model summarize the results.
+A lightweight Flask web application that answers natural language questions like "What is John working on these days?" by retrieving data from Jira and GitHub APIs and formatting for chat.
 
-## Natural-language query handling
+## 📋 Supported Query Types
 
-- Queries are parsed with `src/app/main/query_parser.py`, which now anchors on
-  a validated list of supported team members (see `TEAM_MEMBERS` in
-  `src/utils/references.py`). This avoids false positives from capitalized
-  words and makes “user not found” errors predictable.
-- Intent detection is keyword-based (`commit`, `pull request`, `issue/ticket`)
-  and falls back to a combined activity summary. Time ranges default to
-  “recent” unless phrases like “this week” appear.
+### General Activity Summary
+```
+"What is John working on these days?"
+"Show me Sarah's recent activity"
+"How is Mike doing lately?"
+```
 
-## Jira integration plan
+### Jira-Specific Queries
+```
+"What issues is Sarah working on?"
+"Show me John's current tickets"
+"Mike's assigned tasks"
+```
 
-- **Authentication**: HTTP basic auth with email + API token (token in
-  `JIRA_API_KEY`).
-- **Assigned issues**: `GET /rest/api/3/search` with a JQL such as
-  `assignee = "<name>" AND statusCategory != Done ORDER BY updated DESC`.
-- **Issue details**: Optionally enrich via `GET /rest/api/3/issue/{issueIdOrKey}`
-  for fields like status, summary, priority, and updated timestamp.
-- **Recent updates**: Filter the search JQL with `updated >= -7d` (or similar)
-  when the time range is “this week/recent.”
+### GitHub Commits
+```
+"What has Mike committed this week?"
+"Sarah's recent code changes"
+"Show me John's commits"
+```
+**Returns**: Recent commits with cleaned commit messages
 
-Example user questions handled:
-- “What Jira tickets is John working on?” → `Intent.JIRA_ISSUES` with time
-  range inferred from wording.
-- “Show me Sarah’s current issues” → same flow; returns assigned, non-done
-  issues.
+### Pull Requests
+```
+"Mike's recent pull requests"
+"Show me John's PRs"
+"Lisa's merge requests"
+```
+**Returns**: Recent pull requests with status and titles
 
-## GitHub integration plan
+## 🛠️ Installation & Setup
 
-- **Authentication**: Personal Access Token in `GITHUB_API_KEY` sent via
-  `Authorization: Bearer <token>` with the `application/vnd.github+json`
-  Accept header.
-- **Recent commits**: `GET /search/commits?q=author:<username>+committer-date:>=<ISO-date>`
-  (requires the `application/vnd.github.cloak-preview` Accept header for commit
-  search).
-- **Active pull requests**: `GET /search/issues?q=author:<username>+is:pr+state:open`
-  (adjust `state` for merged/closed history as needed).
-- **Recent repositories contributed to**: use the events feed
-  `GET /users/<username>/events` and collect repositories from push and
-  pull_request events, or query `/users/<username>/repos` for owned work.
+### Prerequisites
+- Python 3.10+
+- Jira account with API access
+- GitHub account with Personal Access Token
+- OpenAI API key (optional - uses template responses by default)
 
-Example user questions handled:
-- “What has Mike committed this week?” → commit search filtered to 7 days.
-- “Show me Lisa’s recent pull requests” → PR search sorted by `updated`.
+### Quick Start
 
-## AI response generation
+1. **Clone and install**:
+```bash
+git clone https://github.com/ahvar/team-activity-monitor.git
+cd team-activity-monitor
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -e .
+```
 
-- Use the OpenAI **Chat Completions API** (e.g., `gpt-4o-mini`) to summarize
-  Jira and GitHub payloads into conversational answers.
-- Provide guardrails: if `parse_query` cannot match a name, return a clear
-  “user not found” response; if both integrations return empty lists, explain
-  there is no recent activity.
-- Keep prompts concise; include the member name, time window, and bulletized
-  Jira/GitHub items. Templates are acceptable for the MVP if the OpenAI API is
-  unavailable.
+2. **Configure environment**:
+```bash
+cp .env.example .env
+# Edit .env with your API credentials
+```
+
+3. **Set up environment variables**:
+```bash
+# Required
+SECRET_KEY=your-secret-key-here
+GITHUB_API_KEY=ghp_your_github_token_here
+JIRA_API_KEY=your_jira_api_token_here
+JIRA_BASE_URL=https://yourcompany.atlassian.net
+JIRA_EMAIL=your-email@company.com
+TEAM_MEMBERS=Arthur,Alice,Bob,Charlie
+
+# Optional
+OPENAI_API_KEY=sk-your-openai-key-here
+GITHUB_BASE_URL=https://api.github.com
+```
+
+4. **Run the application**:
+
+**Development mode**:
+```bash
+flask run
+# OR
+python -m flask run --host=0.0.0.0 --port=5000
+```
+
+**Production mode**:
+```bash
+gunicorn -b 0.0.0.0:5000 --workers 4 --worker-class gevent src.activity_monitor_flask_shell_ctx:app
+```
+
+5. **Visit**: http://localhost:5000
+
+
+
+## 🚀 Features
+
+### Smart Query Processing
+- **Natural language understanding**: Ask questions in plain English
+- **Flexible member name matching**: Handles possessive forms, case variations, and context
+- **Intent detection**: Automatically routes to Jira issues, GitHub commits, pull requests, or combined summaries
+- **Time range parsing**: Understands "this week", "recently", "lately", etc.
+
+### Concurrent API Integration  
+- **Async performance**: Simultaneous API calls to Jira and GitHub for fast responses
+- **Error resilience**: Graceful handling of API failures with partial results
+- **Smart mapping**: Handles different usernames across platforms (e.g., "Arthur" → "ahvar" on GitHub)
+
+### Conversational Interface
+- **Clean web chat**: Bootstrap-powered responsive interface with real-time messaging
+- **Formatted responses**: Proper line breaks, truncated messages, readable output
+- **Example queries**: Built-in suggestions to help users get started
+- **CSRF protection**: Secure form handling with Flask-WTF
+
+
+## 🧪 API Configuration Details
+
+### GitHub API Setup
+1. Go to GitHub Settings → Developer settings → Personal access tokens
+2. Create token with scopes: `repo`, `user:email`, `read:org`
+3. Add to `.env` as `GITHUB_API_KEY=ghp_...`
+
+### Jira API Setup  
+1. Go to Atlassian Account Settings → Security → API tokens
+2. Create new token
+3. Add to `.env` with your email:
+```bash
+JIRA_API_KEY=ATATT3xFfGF0...
+JIRA_EMAIL=your-email@company.com
+JIRA_BASE_URL=https://yourcompany.atlassian.net
+```
+
+### Team Member Mapping
+Configure team members in `.env`:
+```bash
+TEAM_MEMBERS=Sarah,John,Mike,Lisa
+```
+
+For members with different usernames across platforms, update the mapping in `src/app/main/async_activity_service.py`:
+```python
+# Handle username differences
+if member.lower() == "arthur":
+    github_user = "ahvar"  # GitHub username
+    jira_user = "arthurvargasdev@gmail.com"  # Jira email
+else:
+    github_user = member
+    jira_user = member
+```
+
+## 🏗️ Architecture Overview
+
+### Core Components
+
+```
+src/
+├── app/
+│   ├── main/
+│   │   ├── routes.py                 # Flask routes & request handling
+│   │   ├── query_parser.py           # Natural language processing  
+│   │   ├── async_activity_service.py # Orchestrates concurrent API calls
+│   │   ├── response_templates.py     # Formats API data into readable responses
+│   │   └── forms.py                  # CSRF-protected forms
+│   ├── client/
+│   │   ├── async_github.py           # Async GitHub API client
+│   │   └── async_jira.py             # Async Jira API client
+│   └── templates/
+│       ├── base.html                 # Bootstrap layout
+│       └── index.html                # Chat interface
+├── utils/
+│   ├── references.py                 # Global configuration
+│   └── logging_utils.py              # Custom logging utilities
+└── config.py                         # Environment configuration
+```
+
+### Request Flow
+1. **User Input** → Query parsing (member name, intent, time range)
+2. **Concurrent API Calls** → GitHub + Jira APIs called simultaneously  
+3. **Response Generation** → Template-based formatting with error handling
+4. **Web Interface** → Real-time chat updates with line break preservation
+
+### Performance Features
+- **Async/await**: True concurrent API calls using `asyncio.gather()`
+- **Connection pooling**: Reused HTTP sessions with `aiohttp`
+- **Smart caching**: Optional 5-minute response caching (easily configurable)
+- **Error isolation**: One API failure doesn't break the other
+
+## 🧪 Testing
+
+The project includes comprehensive test coverage:
+
+```bash
+# Run all tests
+pytest
+
+# Run specific test modules
+pytest test/app/client/test_async_github_client.py -v
+pytest test/app/main/test_query_parser.py -v
+pytest test/app/main/test_activity_service.py -v
+
+# Run with coverage
+pytest --cov=src --cov-report=html
+```
+
+### Test Coverage
+- ✅ **Query Parser**: Member name extraction, intent detection, time range parsing
+- ✅ **GitHub Client**: API calls, error handling, date filtering
+- ✅ **Jira Client**: Authentication, JQL queries, response parsing  
+- ✅ **Activity Service**: Concurrent operations, exception handling
+- ✅ **Response Templates**: Message formatting, edge cases
+
+## 🚀 Deployment Options
+
+### Option 1: Simple Gunicorn
+```bash
+gunicorn -b 0.0.0.0:5000 --workers 4 --worker-class gevent src.activity_monitor_flask_shell_ctx:app
+```
+
+### Option 2: Docker
+```dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY pyproject.toml ./
+RUN pip install -e .
+COPY src/ ./src/
+COPY .env ./
+EXPOSE 5000
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--worker-class", "gevent", "src.activity_monitor_flask_shell_ctx:app"]
+```
+
+### Option 3: As a Python Package
+```bash
+pip install -e .
+team-monitor  # Runs the application
+```
+
+## 📝 Example Interactions
+
+**General Activity**:
+```
+You: What is Arthur working on these days?
+
+Team-Monitor: Here's what Arthur has been working on:
+
+JIRA TICKETS:
+• SCRUM-2: Task 2 (In Progress)
+• SCRUM-1: Task 1 (To Do)
+
+RECENT COMMITS:
+• 9098963: Merge PR #5: develop
+• d49ea07: Document integrations and validate member parsing
+
+PULL REQUESTS:
+• #4: Document integrations and validate... (closed)
+• #3: processing user queries (closed)
+```
+
+**Specific Intent**:
+```
+You: What has Arthur committed this week?
+
+Team-Monitor: Arthur has 5 recent commits:
+
+1. 9098963 - Merge PR #5: develop
+2. d49ea07 - Document integrations and validate member parsing  
+3. df52e6c - Fixed authentication bug in login
+4. 4a27145 - Updated user dashboard with metrics
+5. 1bfe26e - Added new response templates
+
+Plus 2 more commits.
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**"No team member found"**:
+- Check `TEAM_MEMBERS` in `.env` matches your query
+- Verify member name spelling and capitalization
+
+**"GitHub authentication failed"**:
+- Verify `GITHUB_API_KEY` in `.env` 
+- Check token has required scopes (`repo`, `user:email`)
+- Test token: `curl -H "Authorization: Bearer YOUR_TOKEN" https://api.github.com/user`
+
+**"Jira authentication failed"**:
+- Verify `JIRA_API_KEY`, `JIRA_EMAIL`, and `JIRA_BASE_URL` in `.env`
+- Test token: `curl -u EMAIL:TOKEN https://yourcompany.atlassian.net/rest/api/3/myself`
+
+**Slow responses**:
+- Check network connectivity to both APIs
+- Monitor logs for timeout errors
+- Consider adjusting timeout values in client classes
+
+### Debug Mode
+Enable detailed logging:
+```bash
+export FLASK_ENV=development  
+export FLASK_DEBUG=1
+flask run
+```
+
+Check logs in the console for detailed API call information and error traces.
+
+## 🔮 Future Enhancements
+
+### 🤖 **AI-Powered Response Generation**
+- **OpenAI GPT-4/ChatGPT integration**: Replace template-based responses with dynamic AI-generated answers
+- **Context-aware responses**: AI that understands team dynamics and project context
+
+### 📈 **Enhanced Functionality**
+- **Caching layer**: Redis/memcached for faster repeated queries
+- **User authentication**: Multi-tenant support with user-specific API keys  
+- **Advanced queries**: Date ranges, project filtering, team summaries
+- **Metrics dashboard**: Activity trends and insights
+- **CLI interface**: Command-line tool
+- **Webhook support**: Real-time updates from Jira/GitHub
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.

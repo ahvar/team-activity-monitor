@@ -15,13 +15,14 @@ class Config:
     JIRA_BASE_URL = os.environ.get("JIRA_BASE_URL")
     JIRA_EMAIL = os.environ.get("JIRA_EMAIL")
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-    ADMINS = ["arthurvargasdev@gmail.com"]
     ITEMS_PER_PAGE = 10
     LANGUAGES = ["en", "es"]
 
-    # Parse team members from environment variable
     TEAM_MEMBERS = [
         name.strip()
-        for name in os.environ.get("TEAM_MEMBERS", "John,Sarah,Mike,Lisa").split(",")
+        for name in os.environ.get("TEAM_MEMBERS", "").split(",")
         if name.strip()
     ]
+
+    if not TEAM_MEMBERS:
+        raise ValueError("TEAM_MEMBERS environment variable is required")
