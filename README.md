@@ -211,27 +211,27 @@ pytest --cov=src --cov-report=html
 
 ## 🚀 Deployment Options
 
-### Option 1: Simple Gunicorn
+### Option 1: Direct Python Install (Development)
+```bash
+pip install -e .
+flask run
+```
+
+### Option 2: Production with Gunicorn
 ```bash
 gunicorn -b 0.0.0.0:5000 --workers 4 --worker-class gevent src.activity_monitor_flask_shell_ctx:app
 ```
 
-### Option 2: Docker
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY pyproject.toml ./
-RUN pip install -e .
-COPY src/ ./src/
-COPY .env ./
-EXPOSE 5000
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--worker-class", "gevent", "src.activity_monitor_flask_shell_ctx:app"]
-```
-
-### Option 3: As a Python Package
+### Option 3: Docker Container (Production/Cloud)
 ```bash
-pip install -e .
-team-monitor  # Runs the application
+# Build the image
+docker build -t team-monitor .
+
+# Run with environment file
+docker run -p 5000:5000 --env-file .env team-monitor
+
+# Or with docker-compose
+docker-compose up
 ```
 
 ## 📝 Example Interactions
